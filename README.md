@@ -1,5 +1,5 @@
 # moodie-mirror
-👧 🏻Moodie Mirror for Phillips Hue | School Project
+👧 Moodie Mirror for Phillips Hue | School Project
 
 ## Requirements
 - Node.js (5.0 or newer)
