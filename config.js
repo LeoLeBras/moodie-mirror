@@ -22,6 +22,6 @@ export default {
     autoprefixer: ['last 10 versions']
   },
   javascript: {
-    babel: { presets: ['es2015', 'stage-0'] }
+    babel: { presets: ['es2015', 'stage-2'] }
   }
 }
