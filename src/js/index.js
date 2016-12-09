@@ -1,5 +1,7 @@
 /* @flow */
 
+import { initialyze } from '@helpers/affdex'
+
 // Initialyze elements
 const $affdex = document.querySelector('.affdex')
 const $logs = document.querySelector('.logs')
@@ -8,17 +10,13 @@ const $startButton = document.querySelector('.controls__start')
 const $stopButton = document.querySelector('.controls__stop')
 const $resetButton = document.querySelector('.controls__reset')
 
-// Initialyze affdex  detector
-const faceMode = affdex.FaceDetectorMode.LARGE_FACES
+// Initialyze affdex detector
+const element = $affdex
 const width = 640
 const height = 480
-const detector = new affdex.CameraDetector($affdex, width, height, faceMode)
+const faceMode = affdex.FaceDetectorMode.LARGE_FACES
+const detector = initialyze({ element, width, faceMode, height })
 
-// Run detector
-detector.detectAllEmotions()
-detector.detectAllExpressions()
-detector.detectAllEmojis()
-detector.detectAllAppearance()
 
 // Listen detector initialization
 detector.addEventListener('onInitializeSuccess', () => {
@@ -102,9 +100,13 @@ detector.addEventListener('onImageResultsSuccess', function(faces, image, timest
 })
 
 // Draw the detected facial feature points on the image
+let $canvas, cx
 function drawFeaturePoints(img, featurePoints) {
-  const $canvas = document.querySelector('#face_video_canvas')
-  const cx = $canvas.getContext('2d')
+  if (!$canvas || !cx) {
+    $canvas = document.querySelector('#face_video_canvas')
+    cx = $canvas.getContext('2d')
+  }
+  context.clearRect(0, 0, $canvas.width, $canvas.height)
   cx.strokeStyle = '#ffffff'
   for (var id in featurePoints) {
     cx.beginPath()
