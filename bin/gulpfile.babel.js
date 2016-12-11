@@ -136,7 +136,7 @@ gulp.task('js', () => (
         ],
         alias: {
           '@helpers': path.resolve(srcDir, 'js/helpers'),
-          '@modules': path.resolve(srcDir, 'js/modules'),
+          '@vendors': path.resolve(srcDir, 'js/vendors'),
         },
       },
       module: {

@@ -11,6 +11,7 @@
 - [Gulp](http://gulpjs.com/) streaming build system
 - [Webpack](https://webpack.github.io/) module loader and bundler
 - [Affdex](http://developer.affectiva.com/) emotion recognition software and analysis
+- [Recket](http://github.com/LeoLeBras/recket) wrapper to build realtime application
 
 ## Getting started
 ### Install

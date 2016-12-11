@@ -1,116 +1,85 @@
 /* @flow */
 
-import { initialyze } from '@helpers/affdex'
+import { createRecket, dispatch } from '@helpers/recket'
+import { initialyze, run } from '@helpers/affdex'
+import type { Detector } from '@helpers/affdex/types'
+import { Record } from '@helpers/analysis'
 
-// Initialyze elements
-const $affdex = document.querySelector('.affdex')
-const $logs = document.querySelector('.logs')
-const $results = document.querySelector('.results')
-const $startButton = document.querySelector('.controls__start')
-const $stopButton = document.querySelector('.controls__stop')
-const $resetButton = document.querySelector('.controls__reset')
+// Initialyze recket
+const recket = createRecket('http://localhost:3000')
 
 // Initialyze affdex detector
-const element = $affdex
-const width = 640
-const height = 480
-const faceMode = affdex.FaceDetectorMode.LARGE_FACES
-const detector = initialyze({ element, width, faceMode, height })
+const element: HTMLElement = document.querySelector('.affdex')
+const width: number = window.innerWidth
+const height: number = window.innerHeight
+const detector: Detector = initialyze({ element, width, height })
 
+// Config
+const RECORD_DURATION: number = 10 // Defined in secondes
+const INACTIVITY_DELAY: number = 1000 // Defined in millisecondes
+const DEBUG: boolean = true
 
-// Listen detector initialization
-detector.addEventListener('onInitializeSuccess', () => {
-  log('.logs', 'The detector reports initialized')
-  document.querySelector('#face_video_canvas').style.display = 'block'
-  document.querySelector('#face_video').style.display = 'none'
-})
+// Initialyze vars
+let samples = []
+let recordStartTimestamp: number = 0
+let recordTimestamp: number = 0
+let isRecording = false
 
-// Add a callback to notify when camera access is allowed
-detector.addEventListener('onWebcamConnectSuccess', () => {
-  log('.logs', 'Webcam access allowed')
-})
+/**
+ * Run affdex detector and calc average
+ * values of returned data
+ */
+let timer
+run((faces, timestamp) => {
+  // Detect inactivity
+  clearTimeout(timer)
+  timer = setTimeout(() => {
+    if (isRecording) {
+      dispatch({
+        type: '@@mirror/STOP_RECORD',
+        payload: {},
+      })(recket)
+      isRecording = false
+    }
+  }, INACTIVITY_DELAY)
 
-// Add a callback to notify when camera access is denied
-detector.addEventListener('onWebcamConnectFailure', () => {
-  log('.logs', 'webcam denied')
-  console.log('Webcam access denied')
-})
-
-// Add a callback to notify when detector is stopped
-detector.addEventListener('onStopSuccess', () => {
-  log('.logs', 'The detector reports stopped')
-  document.querySelector('.results').innerHTML = ''
-})
-
-// Start watching face
-$startButton.addEventListener('click', () => {
-  if (detector && !detector.isRunning) {
-    $logs.innerHTML = ''
-    detector.start()
+  // Set record timestamp
+  if (recordStartTimestamp === 0) {
+    if (!isRecording) {
+      dispatch({
+        type: '@@mirror/START_RECORD',
+        payload: {},
+      })(recket)
+      isRecording = true
+    }
+    recordStartTimestamp = timestamp
+    recordTimestamp = 0
   }
-  $logs.innerHTML += 'Clicked the start button'
-})
 
-// Stop watching face
-$stopButton.addEventListener('click', () => {
-  log('.logs', 'Clicked the stop button')
-  if (detector && detector.isRunning) {
-    detector.removeEventListener()
-    detector.stop()
+  // Get samples
+  if (recordTimestamp <= RECORD_DURATION && faces[0]) {
+    recordTimestamp = Math.abs(timestamp - recordStartTimestamp)
+    if (faces[0].emotions) samples.push(faces[0].emotions)
   }
-})
 
-// Reset detector
-$resetButton.addEventListener('click', () => {
-  log('.logs', 'Clicked the reset button')
-  if (detector && detector.isRunning) {
-    detector.reset()
-    $results.innerHTML = ''
+  // Calc average samples and send it with socket + reset vars
+  else {
+    if (!isRecording) return
+
+    // Calc average of all samples
+    const analysis = Record.calcAverage(samples)
+    if (analysis) {
+      // Log analysis in browser
+      if (DEBUG) Record.log(analysis)
+      // Send to api
+      dispatch({
+        type: '@@mirror/GET_ANALYSIS',
+        payload: { analysis },
+      })(recket)
+    }
+
+    // Reset timestamp and samples
+    recordStartTimestamp = 0
+    samples = []
   }
-})
-
-
-
-
-function log(node_name, msg) {
-  document.querySelector(node_name).innerHTML += `<span>${msg}</span><br>`
-}
-
-
-
-
-//Add a callback to receive the results from processing an image.
-//The faces object contains the list of the faces detected in an image.
-//Faces object contains probabilities for all the different expressions, emotions and appearance metrics
-detector.addEventListener('onImageResultsSuccess', function(faces, image, timestamp) {
-  document.querySelector('.results').innerHTML = ''
-  log('.results', 'Timestamp: ' + timestamp.toFixed(2))
-  log('.results', 'Number of faces found: ' + faces.length)
-  if (faces.length > 0) {
-    log('.results', 'Appearance: ' + JSON.stringify(faces[0].appearance))
-    log('.results', 'Emotions: ' + JSON.stringify(faces[0].emotions, function(key, val) {
-      return val.toFixed ? Number(val.toFixed(0)) : val
-    }))
-    log('.results', 'Expressions: ' + JSON.stringify(faces[0].expressions, function(key, val) {
-      return val.toFixed ? Number(val.toFixed(0)) : val
-    }))
-    log('.results', 'Emoji: ' + faces[0].emojis.dominantEmoji)
-    drawFeaturePoints(image, faces[0].featurePoints)
-  }
-})
-
-// Draw the detected facial feature points on the image
-let $canvas, cx
-function drawFeaturePoints(img, featurePoints) {
-  if (!$canvas || !cx) {
-    $canvas = document.querySelector('#face_video_canvas')
-    cx = $canvas.getContext('2d')
-  }
-  context.clearRect(0, 0, $canvas.width, $canvas.height)
-  cx.strokeStyle = '#ffffff'
-  for (var id in featurePoints) {
-    cx.beginPath()
-    cx.arc(featurePoints[id].x, featurePoints[id].y, 2, 0, 2 * Math.PI)
-    cx.stroke()
-  }
-}
+})(detector)

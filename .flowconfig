@@ -1,0 +1,14 @@
+[ignore]
+
+[include]
+
+[libs]
+
+[options]
+module.name_mapper='^@helpers\/\(.*\)$' -> '<PROJECT_ROOT>/src/js/helpers/\1'
+module.name_mapper='^@helpers$' -> '<PROJECT_ROOT>/src/js/helpers'
+module.name_mapper='^@vendors\/\(.*\)$' -> '<PROJECT_ROOT>/src/js/vendors/\1'
+module.name_mapper='^@vendors$' -> '<PROJECT_ROOT>/src/js/vendors'
+
+[version]
+^0.36.0
